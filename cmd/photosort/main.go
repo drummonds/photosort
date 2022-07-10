@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/rwcarlsen/goexif/exif"
@@ -94,9 +95,13 @@ func processFile(filePath string, archiveFolder string) (int64, error) {
 
 func isImageOrVideo(extension string) bool {
 
-	imageExtensions := map[string]bool{".tiff": true, ".tif": true, ".gif": true, ".jpeg": true, ".jpg": true, ".png": true, ".raw": true, ".webm": true, ".mkv": true, ".avi": true, ".mov": true, ".wmv": true, ".mp4": true, ".MP4": true, ".m4v": true, ".mpg": true, ".mp2": true, ".mpeg": true}
+	imageExtensions := map[string]bool{".tiff": true, ".tif": true, ".gif": true,
+		".jpeg": true, ".jpg": true, ".png": true,
+		".raw": true, ".dng": true,
+		".webm": true, ".mkv": true, ".avi": true, ".mov": true, ".wmv": true,
+		".mp4": true, ".MP4": true, ".m4v": true, ".mpg": true, ".mp2": true, ".mpeg": true}
 
-	return imageExtensions[extension]
+	return imageExtensions[strings.ToLower(extension)]
 }
 
 func getDate(filepath string) (time.Time, error) {
@@ -127,12 +132,13 @@ func Exists(filepath string) (bool, error) {
 
 // Generates the entire new path based on all the data, checks for collisions (and rename if needed)
 func newPath(archive string, oldName string, date time.Time) (string, error) {
-	dir := fmt.Sprintf("%s/%d/%d", archive, date.Year(), date.Month())
+	dir := fmt.Sprintf("%s/%0004d/%0004d-%02d/%0004d-%02d-%02d", archive, date.Year(), date.Year(), date.Month(),
+		date.Year(), date.Month(), date.Day())
 	if err := createDir(dir); err != nil {
 		return "", err
 	}
 
-	return fmt.Sprintf("%s/%d/%d/%s", archive, date.Year(), date.Month(), oldName), nil
+	return fmt.Sprintf("%s/%s", dir, oldName), nil
 }
 
 // Creates a directory if it doesn't exist yet
