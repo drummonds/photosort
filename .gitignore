@@ -20,3 +20,6 @@
 # Personal folders for development purposes
 tmp-in
 tmp-out
+
+# Test files not to be saved
+cmd/photosort/test/sorted

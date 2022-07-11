@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -11,47 +10,61 @@ import (
 	"strings"
 	"time"
 
+	"github.com/akamensky/argparse"
 	"github.com/rwcarlsen/goexif/exif"
+)
+
+var (
+	sourceFolder      *string
+	destinationFolder *string
+	totalSize         int64 = 0
 )
 
 func main() {
 	// TODO: Test if using multiple CPUs actually improves performance since  this is a sequential process
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
-	var sourceFolder, destinationFolder string
-	flag.StringVar(&sourceFolder, "source-folder", "", "Source folder with photos")
-	flag.StringVar(&destinationFolder, "destination-folder", "", "Destination folder with archived sorted photos")
-	flag.Parse()
+	// Create new parser object
+	parser := argparse.NewParser("photosort", "Sorts photos from one directory to another")
+	// Create string flag
+	sourceFolder = parser.String("s", "source-folder", &argparse.Options{Required: true, Help: "Source folder"})
+	destinationFolder = parser.String("d", "destination-folder", &argparse.Options{Required: true, Help: "Destination folder with archived sorted photos"})
 
-	if sourceFolder == "" {
+	// Parse input
+	err := parser.Parse(os.Args)
+	if err != nil {
+		// In case of error print error and print usage
+		// This can also be done by passing -h or --help flags
+		fmt.Print(parser.Usage(err))
+	}
+	if *sourceFolder == "" {
 		log.Fatal("source must be specified")
 	}
-	if destinationFolder == "" {
+	if *destinationFolder == "" {
 		log.Fatal("archive must be specified")
 	}
 
-	var totalSize int64 = 0
-
-	err := filepath.Walk(sourceFolder,
-		func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-
-			copiedBytes, err := processFile(path, destinationFolder)
-			if err != nil {
-				// we won't return nil just to not quit the walk function
-				log.Println(err)
-			} else {
-				totalSize += copiedBytes
-				log.Println(ByteCountSI(totalSize))
-			}
-
-			return nil
-		})
+	err = filepath.Walk(*sourceFolder, walkFunc)
 	if err != nil {
 		log.Println(err)
 	}
+}
+
+func walkFunc(path string, info os.FileInfo, err error) error {
+	if err != nil {
+		return err
+	}
+
+	copiedBytes, err := processFile(path, *destinationFolder)
+	if err != nil {
+		// we won't return nil just to not quit the walk function
+		log.Println(err)
+	} else {
+		totalSize += copiedBytes
+		log.Println(ByteCountSI(totalSize))
+	}
+
+	return nil
 }
 
 //  Converts a size in bytes to a human-readable string in SI (decimal)
