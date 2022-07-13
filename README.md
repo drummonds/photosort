@@ -30,6 +30,17 @@ go build photosort.go errors.go
 ```
 
 ### Run
+
 ```
-./photosort --source-folder [srcFolder] --destination-folder [destFolder]
+./photosort -s [srcFolder] -d [destFolder]
 ```
+
+To get full detail on all help options run:
+```
+./photosort --help
+```
+
+### Ideas for future
+
+- Add xmp sidecar copy as well
+- add version number

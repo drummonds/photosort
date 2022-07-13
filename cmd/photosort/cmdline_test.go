@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"testing"
@@ -27,28 +26,50 @@ func TestNosParam(t *testing.T) {
 
 func IsDestFile(name string) bool {
 	_, err := os.Stat(name)
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
 
-func TestParam(t *testing.T) {
-	var err error
-	err = os.RemoveAll("./test/sorted")
+func copyForTest1(t *testing.T, source string, destination string, move bool) {
+	var (
+		err error
+		cmd *exec.Cmd
+	)
+	err = os.RemoveAll(destination)
 	if err != nil {
 		t.Log(err)
 		t.Fail()
 	}
-	// TODO test dir actually works
-	cmd := exec.Command("go", "run", ".", "-s", "./test/test1", "-d", "./test/sorted")
+	if move {
+		cmd = exec.Command("go", "run", ".", "-s", source, "-d", destination, "-m")
+	} else {
+		cmd = exec.Command("go", "run", ".", "-s", source, "-d", destination)
+	}
 	if err = cmd.Run(); err != nil {
 		t.Log(err)
 		t.Fail()
 	}
 	for i, fn := range SampleFiles {
-		if !IsDestFile("./test/sorted/" + fn) {
-			t.Log(fmt.Sprintf("File %v absent = %s, %v", i, fn, err))
+		ffn := destination + "/" + fn
+		if !IsDestFile(ffn) {
+			t.Logf("File %v absent = %s, %v", i, ffn, err)
+			t.Fail()
+		}
+	}
+}
+
+func TestParam(t *testing.T) {
+	copyForTest1(t, "./test/test1", "./test/sorted", false)
+}
+
+func TestMove(t *testing.T) {
+	copyForTest1(t, "./test/test1", "./test/test2", false)
+	copyForTest1(t, "./test/test2", "./test/sorted", true)
+	var err error
+	// make sure move has worked
+	for i, fn := range SampleFiles {
+		ffn := "./test/test2" + "/" + fn
+		if IsDestFile(ffn) {
+			t.Logf("File %v has not been moved %s, %v", i, ffn, err)
 			t.Fail()
 		}
 	}

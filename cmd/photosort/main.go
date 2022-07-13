@@ -18,6 +18,7 @@ var (
 	sourceFolder      *string
 	destinationFolder *string
 	totalSize         int64 = 0
+	moveOption        *bool
 )
 
 func main() {
@@ -29,6 +30,7 @@ func main() {
 	// Create string flag
 	sourceFolder = parser.String("s", "source-folder", &argparse.Options{Required: true, Help: "Source folder"})
 	destinationFolder = parser.String("d", "destination-folder", &argparse.Options{Required: true, Help: "Destination folder with archived sorted photos"})
+	moveOption = parser.Flag("m", "move", &argparse.Options{Default: false, Help: "move photos rather than copy them"})
 
 	// Parse input
 	err := parser.Parse(os.Args)
@@ -55,13 +57,13 @@ func walkFunc(path string, info os.FileInfo, err error) error {
 		return err
 	}
 
-	copiedBytes, err := processFile(path, *destinationFolder)
+	copiedBytes, err := processFile(*moveOption, path, *destinationFolder)
 	if err != nil {
-		// we won't return nil just to not quit the walk function
+		// we won't return error just to not quit the walk function
 		log.Println(err)
 	} else {
 		totalSize += copiedBytes
-		log.Println(ByteCountSI(totalSize))
+		log.Printf("%v Last %v /n", ByteCountSI(totalSize), ByteCountSI(copiedBytes))
 	}
 
 	return nil
@@ -82,7 +84,7 @@ func ByteCountSI(b int64) string {
 		float64(b)/float64(div), "kMGTPE"[exp])
 }
 
-func processFile(filePath string, archiveFolder string) (int64, error) {
+func processFile(move bool, filePath string, archiveFolder string) (int64, error) {
 	filename := filepath.Base(filePath)
 
 	date, err := getDate(filePath)
@@ -93,7 +95,7 @@ func processFile(filePath string, archiveFolder string) (int64, error) {
 		extension := filepath.Ext(filePath)
 		if isImageOrVideo(extension) {
 			finalPath := fmt.Sprintf("%s/%s/%s", archiveFolder, "others", filename)
-			return copyFile(filePath, finalPath)
+			return copyFile(move, filePath, finalPath)
 		}
 		return 0, &ErrNotMediaFile{extension, filePath}
 	}
@@ -103,7 +105,7 @@ func processFile(filePath string, archiveFolder string) (int64, error) {
 		return 0, err
 	}
 
-	return copyFile(filePath, finalPath)
+	return copyFile(move, filePath, finalPath)
 }
 
 func isImageOrVideo(extension string) bool {
@@ -167,9 +169,10 @@ func createDir(dir string) error {
 	return nil
 }
 
-func copyFile(src, dst string) (int64, error) {
+func copyFile(move bool, src, dst string) (int64, error) {
 
 	if exists, err := Exists(dst); err != nil {
+		// TODO If error or exists still want to delete source if move
 		return 0, err
 	} else if exists {
 		return 0, &ErrFileExists{filePath: dst}
@@ -196,5 +199,8 @@ func copyFile(src, dst string) (int64, error) {
 	}
 	defer func() { _ = destination.Close() }()
 	nBytes, err := io.Copy(destination, source)
+	if move {
+		err = os.Remove(src)
+	}
 	return nBytes, err
 }

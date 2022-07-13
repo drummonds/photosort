@@ -23,3 +23,4 @@ tmp-out
 
 # Test files not to be saved
 cmd/photosort/test/sorted
+cmd/photosort/test/test2
